@@ -22,6 +22,7 @@ function checkNumbers(K) {
     return /^\d+$/.test(K);
 }
 const pokemonRouter = express_1.default.Router();
+const pokemonFilePath = path_1.default.join(__dirname, "../../db.json");
 const pokemonTypes = [
     "bug",
     "dragon",
@@ -42,16 +43,61 @@ const pokemonTypes = [
     "rock",
     "water",
 ];
+// put data pokemon
+pokemonRouter.put("/:id", (req, res, next) => {
+    try {
+        let { id } = req.params;
+        const { name, types, url } = req.body;
+        if (!name && !types && !url) {
+            throw new Error("Missing data");
+        }
+        id = Math.floor(id);
+        // 1 or 2 types
+        if (types) {
+            if (types.length > 2) {
+                throw new Error("Pokemon can only have one or two types.");
+            }
+            if (!types.filter((x) => pokemonTypes.includes(x.toLowerCase()))
+                .length) {
+                throw new Error("Pokemon type is invalid.");
+            }
+        }
+        //Read data from db.json then parse to JSobject
+        const pokemonJS = fs_1.default.readFileSync(pokemonFilePath, "utf-8");
+        let pokemonDB = JSON.parse(pokemonJS);
+        let pokemonList = pokemonDB["pokemon"];
+        // Pokemon not found
+        if (!pokemonList.find((x) => x.id === id)) {
+            throw new Error("Pokemon not found");
+        }
+        // new pokemon data
+        pokemonList.forEach((x) => {
+            if (x.id === id) {
+                name ? (x.name = name) : (x.name = x.name);
+                types ? (x.types = types) : (x.types = x.types);
+                url ? (x.url = url) : (x.url = x.url);
+            }
+        });
+        const pokemonUpdate = pokemonList.find((x) => x.id === id);
+        pokemonDB["pokemon"] = pokemonList;
+        pokemonDB["totalPokemon"] = pokemonList.length;
+        fs_1.default.writeFileSync(path_1.default.join(__dirname, "../../db.json"), JSON.stringify(pokemonDB));
+        res.status(200).send(pokemonUpdate);
+    }
+    catch (error) {
+        next(error);
+    }
+});
 // delete pokemon
 pokemonRouter.delete("/:id", (req, res, next) => {
     try {
         const { id } = req.params;
         // console.log(id);
         //Read data from db.json then parse to JSobject
-        const pokemonFilePath = path_1.default.join(__dirname, "../../db.json");
         const pokemonJS = fs_1.default.readFileSync(pokemonFilePath, "utf-8");
         let pokemonDB = JSON.parse(pokemonJS);
         const pokemonList = pokemonDB["pokemon"];
+        // Pokemon not found
         if (!pokemonList.find((x) => x.id === parseInt(id))) {
             throw new Error("Pokemon not found");
         }
@@ -76,7 +122,7 @@ pokemonRouter.post("/", (req, res, next) => {
             throw new Error("Missing required data.");
         }
         // 1 or 2 types
-        if (types.length > 3) {
+        if (types.length > 2) {
             throw new Error("Pokemon can only have one or two types.");
         }
         let newPokemonType = [
@@ -88,7 +134,6 @@ pokemonRouter.post("/", (req, res, next) => {
             throw new Error("Pokemon type is invalid.");
         }
         //Read data from db.json then parse to JSobject
-        const pokemonFilePath = path_1.default.join(__dirname, "../../db.json");
         const pokemonJS = fs_1.default.readFileSync(pokemonFilePath, "utf-8");
         let pokemonDB = JSON.parse(pokemonJS);
         const pokemonList = pokemonDB["pokemon"];
@@ -117,7 +162,7 @@ pokemonRouter.post("/", (req, res, next) => {
 });
 // get all data & fiter
 pokemonRouter.get("/", (req, res, next) => {
-    const allowedFilters = ["type", "search", "page", "limit"];
+    const allowedFilters = ["types", "search", "page", "limit"];
     try {
         let _a = req.query, { page, limit } = _a, filterQuery = __rest(_a, ["page", "limit"]);
         // default value
@@ -135,7 +180,6 @@ pokemonRouter.get("/", (req, res, next) => {
         //Number of items skip for selection
         let offset = limit * (page - 1);
         //Read data from db.json then parse to JSobject
-        const pokemonFilePath = path_1.default.join(__dirname, "../../db.json");
         const pokemonJS = fs_1.default.readFileSync(pokemonFilePath, "utf-8");
         let pokemonDB = JSON.parse(pokemonJS);
         const pokemon = pokemonDB["pokemon"];
@@ -158,7 +202,7 @@ pokemonRouter.get("/", (req, res, next) => {
                                 : pokemon.filter((x) => x["name"].includes(filterValue));
                         }
                         break;
-                    case "type":
+                    case "types":
                         result = result.length
                             ? result.filter((x) => x["types"].includes(filterValue))
                             : pokemon.filter((x) => x["types"].includes(filterValue));
