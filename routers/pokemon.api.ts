@@ -40,6 +40,81 @@ interface inforPokemon {
   url: string;
 }
 
+// get one pokemon info
+pokemonRouter.get(
+  "/:id",
+  (
+    req: express.Request<{ id: number }>,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    try {
+      let { id } = req.params;
+      id = Math.floor(id);
+      //Read data from db.json then parse to JSobject
+      const pokemonJS = fs.readFileSync(pokemonFilePath, "utf-8");
+      let pokemonDB: object = JSON.parse(pokemonJS);
+      const pokemonList: Array<inforPokemon> = pokemonDB["pokemon"];
+      const totalPokemon: number = parseInt(pokemonDB["totalPokemon"]) - 1;
+
+      if (!pokemonList.find((x) => x.id === id)) {
+        throw new Error("Pokemon not found.");
+      }
+      let responseData: Array<inforPokemon> = [];
+
+      const pokemonIndex = pokemonList.findIndex((x) => x.id === id);
+      // console.log(pokemonIndex, totalPokemon);
+
+      if (pokemonIndex === 0) {
+        responseData = [
+          pokemonList[totalPokemon],
+          pokemonList[pokemonIndex],
+          pokemonList[pokemonIndex + 1],
+        ];
+      } else if (pokemonIndex === totalPokemon) {
+        responseData = [
+          pokemonList[pokemonIndex - 1],
+          pokemonList[pokemonIndex],
+          pokemonList[0],
+        ];
+      } else {
+        responseData = [
+          pokemonList[pokemonIndex - 1],
+          pokemonList[pokemonIndex],
+          pokemonList[pokemonIndex + 1],
+        ];
+      }
+
+      // switch (pokemonIndex) {
+      //   case 0:
+      //     responseData = [
+      //       pokemonList[totalPokemon],
+      //       pokemonList[pokemonIndex],
+      //       pokemonList[pokemonIndex + 1],
+      //     ];
+      //     break;
+      //   case totalPokemon:
+      //     responseData = [
+      //       pokemonList[pokemonIndex - 1],
+      //       pokemonList[pokemonIndex],
+      //       pokemonList[0],
+      //     ];
+      //   default:
+      //     responseData = [
+      //       pokemonList[pokemonIndex - 1],
+      //       pokemonList[pokemonIndex],
+      //       pokemonList[pokemonIndex + 1],
+      //     ];
+      //     break;
+      // }
+
+      res.status(200).send(responseData);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // put data pokemon
 pokemonRouter.put(
   "/:id",
